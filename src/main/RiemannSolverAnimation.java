@@ -21,6 +21,7 @@ import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.transform.Transform;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import screenshots.ScreenshotUtility;
 
 public class RiemannSolverAnimation extends Application {
 
@@ -46,6 +47,7 @@ public class RiemannSolverAnimation extends Application {
         Scene scene = new Scene(root, WIDTH, HEIGHT);
         primaryStage.setScene(scene);
         primaryStage.show();
+        ScreenshotUtility.screenshotThread(scene, 10).start();
 
         SimpleDoubleProperty timeProperty = new SimpleDoubleProperty(0);
 
