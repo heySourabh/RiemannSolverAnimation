@@ -18,6 +18,9 @@ import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
 import javafx.scene.shape.Polygon;
 import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontPosture;
+import javafx.scene.text.Text;
 import javafx.scene.transform.Transform;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -26,7 +29,7 @@ import screenshots.ScreenshotUtility;
 public class RiemannSolverAnimation extends Application {
 
     final double WIDTH = 800;
-    final double HEIGHT = 300;
+    final double HEIGHT = 800;
     final double SIDE_OFFSET = 50;
     final double BOTTOM_OFFSET = 50;
     final double TOP_OFFSET = 10;
@@ -47,17 +50,19 @@ public class RiemannSolverAnimation extends Application {
         Scene scene = new Scene(root, WIDTH, HEIGHT);
         primaryStage.setScene(scene);
         primaryStage.show();
-        ScreenshotUtility.screenshotThread(scene, 10).start();
+        //ScreenshotUtility.screenshotThread(scene, 6).start();
 
         SimpleDoubleProperty timeProperty = new SimpleDoubleProperty(0);
 
         AnimationTimer timer = new AnimationTimer() {
             @Override
             public void handle(long now) {
-                Node axes = createAxis();
+                Node axes1 = createAxis(1, "x", "t");
                 Node waves = createWaves(timeProperty.doubleValue());
+                Node axes2 = createAxis(2, "x", "U");
+                Node distribution = createDistribution(timeProperty.doubleValue());
                 root.getChildren().clear();
-                root.getChildren().addAll(waves, axes);
+                root.getChildren().addAll(waves, axes1, distribution, axes2);
             }
         };
         timer.start();
@@ -88,8 +93,8 @@ public class RiemannSolverAnimation extends Application {
     private Group createWaves(double time) {
         double timeRatio = time / STOP_TIME;
         double xZero = WIDTH / 2;
-        double yZero = HEIGHT - BOTTOM_OFFSET;
-        double maxHeight = HEIGHT - BOTTOM_OFFSET - TOP_OFFSET - 50;
+        double yZero = HEIGHT / 2.0 - 2.0 * BOTTOM_OFFSET;
+        double maxHeight = HEIGHT / 2.0 - 2.0 * BOTTOM_OFFSET - 2.0 * TOP_OFFSET - 50;
         double yTime = yZero - timeRatio * maxHeight;
 
         double redL = 1.0;
@@ -133,16 +138,76 @@ public class RiemannSolverAnimation extends Application {
 
         return wavesGroup;
     }
-
-    private Group createAxis() {
+    
+    private Group createDistribution(double time) {
+        double timeRatio = time / STOP_TIME;
         double xZero = WIDTH / 2;
-        double yZero = HEIGHT - BOTTOM_OFFSET;
+        double yZero = HEIGHT -  BOTTOM_OFFSET;
+        double topLimit = HEIGHT / 2.0 - 50;
+        double maxHeight = HEIGHT / 2.0 - 2.0 * BOTTOM_OFFSET - 2.0 * TOP_OFFSET - 50;
+        double yTime = yZero - timeRatio * maxHeight;
+        double du = (yZero - topLimit - 50) / (dx_dt.length + 1);
+
+        double redL = 1.0;
+        double greenL = 0.0;
+        double blueL = 0.0;
+        double redR = 0.0;
+        double greenR = 0.0;
+        double blueR = 1.0;
+
+        Polygon leftState = new Polygon(
+                SIDE_OFFSET, yZero,
+                xZero + (yZero - yTime) * dx_dt[0], yZero,
+                xZero + (yZero - yTime) * dx_dt[0], topLimit + 50.0,
+                SIDE_OFFSET, topLimit + 50.0
+        );
+        leftState.setFill(new Color(redL, greenL, blueL, 1.0));
+
+        Polygon rightState = new Polygon(
+                xZero + WIDTH / 2 - SIDE_OFFSET, yZero,
+                xZero + (yZero - yTime) * dx_dt[dx_dt.length - 1], yZero,
+                xZero + (yZero - yTime) * dx_dt[dx_dt.length - 1], yZero - du,
+                xZero + WIDTH / 2 - SIDE_OFFSET, yZero - du
+        );
+        rightState.setFill(new Color(redR, greenR, blueR, 1.0));
+
+        Group distGroup = new Group(leftState, rightState);
+
+        // Intermediate states
+        for (int i = 0; i < dx_dt.length - 1; i++) {
+            Polygon state = new Polygon(
+                    xZero + (yZero - yTime) * dx_dt[i], yZero,
+                    xZero + (yZero - yTime) * dx_dt[i], yZero - (dx_dt.length - i) * du,
+                    xZero + (yZero - yTime) * dx_dt[i + 1], yZero - (dx_dt.length - i) * du,
+                    xZero + (yZero - yTime) * dx_dt[i + 1], yZero
+            );
+            double colorRatio = (i + 1.0) / (dx_dt.length);
+            state.setFill(new Color(redL + (redR - redL) * colorRatio,
+                    greenL + (greenR - greenL) * colorRatio,
+                    blueL + (blueR - blueL) * colorRatio, 1.0));
+            distGroup.getChildren().add(state);
+        }
+
+        return distGroup;
+    }
+
+    private Group createAxis(int id, String xLabel, String yLabel) {
+        double xZero = WIDTH / 2;
+        double yZero = id == 1 ? HEIGHT / 2.0 - 2.0 * BOTTOM_OFFSET : HEIGHT -  BOTTOM_OFFSET;
+        double topLimit = id == 1 ? TOP_OFFSET : HEIGHT / 2.0 - 50;
         Path axisX = createArrow(new Point2D(SIDE_OFFSET, yZero), new Point2D(xZero * 2 - SIDE_OFFSET, yZero), 20);
         axisX.setStrokeWidth(2.0);
-        Path axisY = createArrow(new Point2D(xZero, yZero), new Point2D(xZero, TOP_OFFSET), 20);
+        Path axisY = createArrow(new Point2D(xZero, yZero), new Point2D(xZero, topLimit), 20);
         axisY.setStrokeWidth(2.0);
+        
+        Font labelFont = Font.font("serif", FontPosture.ITALIC, 20);
+        Text xLabelText = new Text(WIDTH - 80, yZero + 25, xLabel);
+        xLabelText.setFont(labelFont);
+        
+        Text yLabelText = new Text(xZero + 15, topLimit + 25, yLabel);
+        yLabelText.setFont(labelFont);
 
-        Group axes = new Group(axisX, axisY);
+        Group axes = new Group(axisX, axisY, xLabelText, yLabelText);
         return axes;
     }
 
