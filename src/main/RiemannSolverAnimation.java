@@ -2,6 +2,7 @@ package main;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 import javafx.animation.Animation;
 import javafx.animation.AnimationTimer;
@@ -9,6 +10,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
@@ -38,29 +40,30 @@ public class RiemannSolverAnimation extends Application {
     final double TOP_OFFSET = 10;
     final double STOP_TIME = 5.0;
     static double[] dx_dt = {-0.25, -0.5, 1.0, 1.5};
+    String titleStr = "*** Pause/play:SPACE; Reverse:r; Change wave speeds:double_click (Programmed by Sourabh Bhat) ***";
 
     boolean playing = true;
 
     public static void main(String[] args) {
+        Arrays.sort(dx_dt);
         System.out.println(Arrays.toString(dx_dt));
         launch(args);
     }
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        String dx_dt_list = Arrays.toString(dx_dt);
-        TextInputDialog get_dx_dt = new TextInputDialog(dx_dt_list);
-        get_dx_dt.setTitle("slope: dx/dt");
-        get_dx_dt.setHeaderText("Enter list of wave speeds dx / dt within range [-1.5 to 1.5]");
-        dx_dt_list = get_dx_dt.showAndWait().orElse(dx_dt_list);
-        dx_dt = parseToArray(dx_dt_list);
-        Arrays.sort(dx_dt);
-
         Group root = new Group();
         Scene scene = new Scene(root, WIDTH, HEIGHT);
         primaryStage.setScene(scene);
         primaryStage.show();
+        startStageTitleAnimation(primaryStage);
         //ScreenshotUtility.screenshotThread(scene, 6).start();
+
+        scene.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) {
+                setNew_dt_dx();
+            }
+        });
 
         SimpleDoubleProperty timeProperty = new SimpleDoubleProperty(0);
 
@@ -241,19 +244,46 @@ public class RiemannSolverAnimation extends Application {
         return arrow;
     }
 
-    private double[] parseToArray(String dx_dt_list) {
+    private double[] parseAndScaleToArray(String dx_dt_list) {
         String csv = dx_dt_list.trim().substring(1, dx_dt_list.length() - 1);
         List<Double> list = Arrays.stream(csv.split(","))
                 .map(s -> Double.parseDouble(s.trim()))
-                .filter(value -> value >= -1.51 && value <= 1.51)
                 .collect(Collectors.toList());
+        double max = list.stream()
+                .mapToDouble(d -> Math.abs(d))
+                .max()
+                .getAsDouble();
         double[] double_list = new double[list.size()];
         for (int i = 0; i < double_list.length; i++) {
-            double_list[i] = list.get(i);
+            double_list[i] = list.get(i) / max * 1.5;
 
         }
         System.out.println(Arrays.toString(double_list));
-        
+
         return double_list;
+    }
+
+    private void setNew_dt_dx() {
+        String dx_dt_list = Arrays.toString(dx_dt);
+        TextInputDialog get_dx_dt = new TextInputDialog(dx_dt_list);
+        get_dx_dt.setTitle("slope: dx/dt");
+        get_dx_dt.setHeaderText("Enter list of wave speeds dx / dt within range [-1.5 to 1.5]");
+        dx_dt_list = get_dx_dt.showAndWait().orElse(dx_dt_list);
+        dx_dt = parseAndScaleToArray(dx_dt_list);
+        Arrays.sort(dx_dt);
+    }
+
+    private void startStageTitleAnimation(Stage primaryStage) {
+        new Thread(() -> {
+            while (primaryStage.isShowing()) {
+                titleStr = titleStr.substring(1) + titleStr.charAt(0);
+                setTitle(primaryStage, titleStr);
+                LockSupport.parkNanos(1_000_000_000);
+            }
+        }).start();
+    }
+
+    private void setTitle(Stage stage, String title) {
+        Platform.runLater(() -> stage.setTitle(title));
     }
 }
