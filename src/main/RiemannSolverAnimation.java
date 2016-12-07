@@ -35,14 +35,14 @@ import screenshots.ScreenshotUtility;
 
 public class RiemannSolverAnimation extends Application {
 
-    final double WIDTH = 800;
-    final double HEIGHT = 800;
-    final double SIDE_OFFSET = 50;
-    final double BOTTOM_OFFSET = 50;
-    final double TOP_OFFSET = 10;
-    final double STOP_TIME = 5.0;
+    final static double WIDTH = 800;
+    final static double HEIGHT = 800;
+    final static double SIDE_OFFSET = 50;
+    final static double BOTTOM_OFFSET = 50;
+    final static double TOP_OFFSET = 10;
+    final static double STOP_TIME = 5.0;
     static double[] dx_dt = {-0.25, -0.5, 1.0, 1.5};
-    String titleStr = "*** Pause/play:SPACE; Reverse:r; Change wave speeds:double_click (Programmed by Sourabh Bhat) ***";
+    String titleStr = "*** Pause/play:SPACE; Reverse:R; Change wave speeds:DOUBLE_CLICK (Programmed by Sourabh Bhat) ***";
 
     boolean playing = false;
 
@@ -196,7 +196,7 @@ public class RiemannSolverAnimation extends Application {
         return distGroup;
     }
 
-    Color getColor(double colorRatio) {
+    private Color getColor(double colorRatio) {
         double redL = 1.0;
         double greenL = 0.0;
         double blueL = 0.0;
@@ -272,7 +272,7 @@ public class RiemannSolverAnimation extends Application {
         String dx_dt_list = Arrays.toString(dx_dt);
         TextInputDialog get_dx_dt = new TextInputDialog(dx_dt_list);
         get_dx_dt.setTitle("slope: dx/dt");
-        get_dx_dt.setHeaderText("Enter list of wave speeds dx / dt within range [-1.5 to 1.5]");
+        get_dx_dt.setHeaderText("Enter list of wave speeds dx / dt");
         dx_dt_list = get_dx_dt.showAndWait().orElse(dx_dt_list);
         dx_dt = parseAndScaleToArray(dx_dt_list);
         Arrays.sort(dx_dt);
@@ -283,7 +283,7 @@ public class RiemannSolverAnimation extends Application {
             while (primaryStage.isShowing()) {
                 titleStr = titleStr.substring(1) + titleStr.charAt(0);
                 setTitle(primaryStage, titleStr);
-                LockSupport.parkNanos(1_000_000_000);
+                LockSupport.parkNanos(500_000_000);
             }
         }).start();
     }
