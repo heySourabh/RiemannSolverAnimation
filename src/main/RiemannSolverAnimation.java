@@ -17,6 +17,8 @@ import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.Tooltip;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
@@ -42,7 +44,7 @@ public class RiemannSolverAnimation extends Application {
     static double[] dx_dt = {-0.25, -0.5, 1.0, 1.5};
     String titleStr = "*** Pause/play:SPACE; Reverse:r; Change wave speeds:double_click (Programmed by Sourabh Bhat) ***";
 
-    boolean playing = true;
+    boolean playing = false;
 
     public static void main(String[] args) {
         Arrays.sort(dx_dt);
@@ -85,7 +87,7 @@ public class RiemannSolverAnimation extends Application {
                 new KeyFrame(Duration.seconds(5), new KeyValue(timeProperty, STOP_TIME))
         );
         timeline.setCycleCount(Animation.INDEFINITE);
-        timeline.play();
+        //timeline.play();
 
         scene.setOnKeyTyped(e -> {
             if (e.getCharacter().equals(" ")) {
@@ -110,20 +112,14 @@ public class RiemannSolverAnimation extends Application {
         double maxHeight = HEIGHT / 2.0 - 2.0 * BOTTOM_OFFSET - 2.0 * TOP_OFFSET - 50;
         double yTime = yZero - timeRatio * maxHeight;
 
-        double redL = 1.0;
-        double greenL = 0.0;
-        double blueL = 0.0;
-        double redR = 0.0;
-        double greenR = 0.0;
-        double blueR = 1.0;
-
         Polygon leftState = new Polygon(
                 SIDE_OFFSET, yZero,
                 xZero, yZero,
                 xZero + (yZero - yTime) * dx_dt[0], yTime,
                 SIDE_OFFSET, yTime
         );
-        leftState.setFill(new Color(redL, greenL, blueL, 1.0));
+        leftState.setFill(getColor(0.0));
+        leftState.setOnMousePressed(e -> showInfo(e, "UL"));
 
         Polygon rightState = new Polygon(
                 xZero + WIDTH / 2 - SIDE_OFFSET, yZero,
@@ -131,7 +127,8 @@ public class RiemannSolverAnimation extends Application {
                 xZero + (yZero - yTime) * dx_dt[dx_dt.length - 1], yTime,
                 xZero + WIDTH / 2 - SIDE_OFFSET, yTime
         );
-        rightState.setFill(new Color(redR, greenR, blueR, 1.0));
+        rightState.setFill(getColor(1.0));
+        rightState.setOnMousePressed(e -> showInfo(e, "UR"));
 
         Group wavesGroup = new Group(leftState, rightState);
 
@@ -143,9 +140,9 @@ public class RiemannSolverAnimation extends Application {
                     xZero + (yZero - yTime) * dx_dt[i + 1], yTime
             );
             double colorRatio = (i + 1.0) / (dx_dt.length);
-            state.setFill(new Color(redL + (redR - redL) * colorRatio,
-                    greenL + (greenR - greenL) * colorRatio,
-                    blueL + (blueR - blueL) * colorRatio, 1.0));
+            state.setFill(getColor(colorRatio));
+            final String infoString = "U*" + (i + 1);
+            state.setOnMousePressed(e -> showInfo(e, infoString));
             wavesGroup.getChildren().add(state);
         }
 
@@ -161,20 +158,14 @@ public class RiemannSolverAnimation extends Application {
         double yTime = yZero - timeRatio * maxHeight;
         double du = (yZero - topLimit - 50) / (dx_dt.length + 1);
 
-        double redL = 1.0;
-        double greenL = 0.0;
-        double blueL = 0.0;
-        double redR = 0.0;
-        double greenR = 0.0;
-        double blueR = 1.0;
-
         Polygon leftState = new Polygon(
                 SIDE_OFFSET, yZero,
                 xZero + (yZero - yTime) * dx_dt[0], yZero,
                 xZero + (yZero - yTime) * dx_dt[0], topLimit + 50.0,
                 SIDE_OFFSET, topLimit + 50.0
         );
-        leftState.setFill(new Color(redL, greenL, blueL, 1.0));
+        leftState.setFill(getColor(0));
+        leftState.setOnMousePressed(e -> showInfo(e, "UL"));
 
         Polygon rightState = new Polygon(
                 xZero + WIDTH / 2 - SIDE_OFFSET, yZero,
@@ -182,7 +173,8 @@ public class RiemannSolverAnimation extends Application {
                 xZero + (yZero - yTime) * dx_dt[dx_dt.length - 1], yZero - du,
                 xZero + WIDTH / 2 - SIDE_OFFSET, yZero - du
         );
-        rightState.setFill(new Color(redR, greenR, blueR, 1.0));
+        rightState.setFill(getColor(1.0));
+        rightState.setOnMousePressed(e -> showInfo(e, "UR"));
 
         Group distGroup = new Group(leftState, rightState);
 
@@ -195,13 +187,26 @@ public class RiemannSolverAnimation extends Application {
                     xZero + (yZero - yTime) * dx_dt[i + 1], yZero
             );
             double colorRatio = (i + 1.0) / (dx_dt.length);
-            state.setFill(new Color(redL + (redR - redL) * colorRatio,
-                    greenL + (greenR - greenL) * colorRatio,
-                    blueL + (blueR - blueL) * colorRatio, 1.0));
+            state.setFill(getColor(colorRatio));
+            final String infoString = "U*" + (i + 1);
+            state.setOnMousePressed(e -> showInfo(e, infoString));
             distGroup.getChildren().add(state);
         }
 
         return distGroup;
+    }
+
+    Color getColor(double colorRatio) {
+        double redL = 1.0;
+        double greenL = 0.0;
+        double blueL = 0.0;
+        double redR = 0.0;
+        double greenR = 0.0;
+        double blueR = 1.0;
+
+        return new Color(redL + (redR - redL) * colorRatio,
+                greenL + (greenR - greenL) * colorRatio,
+                blueL + (blueR - blueL) * colorRatio, 1.0);
     }
 
     private Group createAxis(int id, String xLabel, String yLabel) {
@@ -285,5 +290,16 @@ public class RiemannSolverAnimation extends Application {
 
     private void setTitle(Stage stage, String title) {
         Platform.runLater(() -> stage.setTitle(title));
+    }
+
+    private void showInfo(MouseEvent e, String infoText) {
+        Tooltip info = new Tooltip();
+        info.setText(infoText);
+        Node node = (Node) e.getSource();
+        info.show(node, e.getScreenX() + 5, e.getScreenY() + 5);
+        new Thread(() -> {
+            LockSupport.parkNanos(1_000_000_000);
+            Platform.runLater(() -> info.hide());
+        }).start();
     }
 }
