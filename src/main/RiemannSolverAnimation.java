@@ -12,10 +12,12 @@ import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.MouseEvent;
@@ -27,11 +29,15 @@ import javafx.scene.shape.Polygon;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.transform.Transform;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.util.Duration;
-import screenshots.ScreenshotUtility;
+import util.ScreenshotUtility;
+import util.FrameRateCalculator;
 
 public class RiemannSolverAnimation extends Application {
 
@@ -60,10 +66,17 @@ public class RiemannSolverAnimation extends Application {
         primaryStage.show();
         startStageTitleAnimation(primaryStage);
         //ScreenshotUtility.screenshotThread(scene, 6).start();
+        FrameRateCalculator frc = new FrameRateCalculator();
+        new Thread(() -> {
+            while (primaryStage.isShowing()) {
+                LockSupport.parkNanos(1_000_000_000);
+                System.out.println("FPS = " + frc.getFramesPerSecond());
+            }
+        }).start();
 
         scene.setOnMouseClicked(e -> {
             if (e.getClickCount() == 2) {
-                setNew_dt_dx();
+                setNew_dx_dt();
             }
         });
 
@@ -249,33 +262,65 @@ public class RiemannSolverAnimation extends Application {
         return arrow;
     }
 
-    private double[] parseAndScaleToArray(String dx_dt_list) {
+    private double[] parseAndScaleToArray(String dx_dt_list, double[] defaultArray) {
+        if (dx_dt_list.length() < 2) {
+            return defaultArray;
+        }
         String csv = dx_dt_list.trim().substring(1, dx_dt_list.length() - 1);
-        List<Double> list = Arrays.stream(csv.split(","))
-                .map(s -> Double.parseDouble(s.trim()))
-                .collect(Collectors.toList());
-        double max = list.stream()
-                .mapToDouble(d -> Math.abs(d))
-                .max()
-                .getAsDouble();
+        List<Double> list;
+        double max;
+        try {
+            list = Arrays.stream(csv.split(","))
+                    .map(s -> Double.parseDouble(s.trim()))
+                    .collect(Collectors.toList());
+            max = list.stream()
+                    .mapToDouble(d -> Math.abs(d))
+                    .max()
+                    .getAsDouble();
+        } catch (Exception ex) {
+            return defaultArray;
+        }
         double[] double_list = new double[list.size()];
         for (int i = 0; i < double_list.length; i++) {
             double_list[i] = list.get(i) / max * 1.5;
-
         }
         System.out.println(Arrays.toString(double_list));
 
         return double_list;
     }
 
-    private void setNew_dt_dx() {
+    private void setNew_dx_dt() {
+        // Creating a dummy Stage to stay always on top and act as a owner for the dialog
+        // so that the dialog can be non-modal and still remain on top of animating window
+        Stage s = new Stage(StageStyle.TRANSPARENT);
+        s.setScene(new Scene(new Group(), 1, 1, Color.TRANSPARENT));
+        s.setAlwaysOnTop(true);
+        s.setResizable(false);
+        s.show();
+        // End of creation of dummy Stage
+
         String dx_dt_list = Arrays.toString(dx_dt);
         TextInputDialog get_dx_dt = new TextInputDialog(dx_dt_list);
+        get_dx_dt.initModality(Modality.WINDOW_MODAL);
+        get_dx_dt.initOwner(s);
+        TextField inputField = get_dx_dt.getEditor();
+        inputField.setPrefColumnCount(20);
+        inputField.setFont(Font.font(null, FontWeight.BOLD, FontPosture.REGULAR, 20));
+        inputField.textProperty().addListener(
+                (ObservableValue<? extends String> observable, String oldValue, String newValue) -> {
+                    set_dx_dt(newValue);
+                });
         get_dx_dt.setTitle("slope: dx/dt");
-        get_dx_dt.setHeaderText("Enter list of wave speeds dx / dt");
-        dx_dt_list = get_dx_dt.showAndWait().orElse(dx_dt_list);
-        dx_dt = parseAndScaleToArray(dx_dt_list);
-        Arrays.sort(dx_dt);
+        get_dx_dt.setHeaderText("Enter list of wave speeds dx/dt");
+
+        get_dx_dt.showAndWait();
+        s.close();
+    }
+
+    private void set_dx_dt(String dx_dt_list) {
+        double[] dx_dt_local = parseAndScaleToArray(dx_dt_list, dx_dt);
+        Arrays.sort(dx_dt_local);
+        RiemannSolverAnimation.dx_dt = dx_dt_local;
     }
 
     private void startStageTitleAnimation(Stage primaryStage) {
