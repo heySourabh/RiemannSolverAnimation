@@ -19,8 +19,6 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
-import javafx.scene.control.Tooltip;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
@@ -38,6 +36,7 @@ import javafx.stage.StageStyle;
 import javafx.util.Duration;
 import util.ScreenshotUtility;
 import util.FrameRateCalculator;
+import util.UtilFX;
 
 public class RiemannSolverAnimation extends Application {
 
@@ -47,6 +46,7 @@ public class RiemannSolverAnimation extends Application {
     final static double BOTTOM_OFFSET = 50;
     final static double TOP_OFFSET = 10;
     final static double STOP_TIME = 5.0;
+    final static double TIP_FONT_SIZE = 15;
     static double[] dx_dt = {-0.25, -0.5, 1.0, 1.5};
     String titleStr = "*** Pause/play:SPACE; Reverse:R; Change wave speeds:DOUBLE_CLICK (Programmed by Sourabh Bhat) ***";
 
@@ -132,7 +132,7 @@ public class RiemannSolverAnimation extends Application {
                 SIDE_OFFSET, yTime
         );
         leftState.setFill(getColor(0.0));
-        leftState.setOnMousePressed(e -> showInfo(e, "UL"));
+        leftState.setOnMousePressed(e -> UtilFX.showInfoTip(e, "UL", TIP_FONT_SIZE));
 
         Polygon rightState = new Polygon(
                 xZero + WIDTH / 2 - SIDE_OFFSET, yZero,
@@ -141,7 +141,7 @@ public class RiemannSolverAnimation extends Application {
                 xZero + WIDTH / 2 - SIDE_OFFSET, yTime
         );
         rightState.setFill(getColor(1.0));
-        rightState.setOnMousePressed(e -> showInfo(e, "UR"));
+        rightState.setOnMousePressed(e -> UtilFX.showInfoTip(e, "UR", TIP_FONT_SIZE));
 
         Group wavesGroup = new Group(leftState, rightState);
 
@@ -155,7 +155,7 @@ public class RiemannSolverAnimation extends Application {
             double colorRatio = (i + 1.0) / (dx_dt.length);
             state.setFill(getColor(colorRatio));
             final String infoString = "U*" + (i + 1);
-            state.setOnMousePressed(e -> showInfo(e, infoString));
+            state.setOnMousePressed(e -> UtilFX.showInfoTip(e, infoString, TIP_FONT_SIZE));
             wavesGroup.getChildren().add(state);
         }
 
@@ -178,7 +178,7 @@ public class RiemannSolverAnimation extends Application {
                 SIDE_OFFSET, topLimit + 50.0
         );
         leftState.setFill(getColor(0));
-        leftState.setOnMousePressed(e -> showInfo(e, "UL"));
+        leftState.setOnMousePressed(e -> UtilFX.showInfoTip(e, "UL", TIP_FONT_SIZE));
 
         Polygon rightState = new Polygon(
                 xZero + WIDTH / 2 - SIDE_OFFSET, yZero,
@@ -187,7 +187,7 @@ public class RiemannSolverAnimation extends Application {
                 xZero + WIDTH / 2 - SIDE_OFFSET, yZero - du
         );
         rightState.setFill(getColor(1.0));
-        rightState.setOnMousePressed(e -> showInfo(e, "UR"));
+        rightState.setOnMousePressed(e -> UtilFX.showInfoTip(e, "UR", TIP_FONT_SIZE));
 
         Group distGroup = new Group(leftState, rightState);
 
@@ -202,7 +202,7 @@ public class RiemannSolverAnimation extends Application {
             double colorRatio = (i + 1.0) / (dx_dt.length);
             state.setFill(getColor(colorRatio));
             final String infoString = "U*" + (i + 1);
-            state.setOnMousePressed(e -> showInfo(e, infoString));
+            state.setOnMousePressed(e -> UtilFX.showInfoTip(e, infoString, TIP_FONT_SIZE));
             distGroup.getChildren().add(state);
         }
 
@@ -263,10 +263,7 @@ public class RiemannSolverAnimation extends Application {
     }
 
     private double[] parseAndScaleToArray(String dx_dt_list, double[] defaultArray) {
-        if (dx_dt_list.length() < 2) {
-            return defaultArray;
-        }
-        String csv = dx_dt_list.trim().substring(1, dx_dt_list.length() - 1);
+        String csv = dx_dt_list.trim();
         List<Double> list;
         double max;
         try {
@@ -299,11 +296,19 @@ public class RiemannSolverAnimation extends Application {
         s.show();
         // End of creation of dummy Stage
 
-        String dx_dt_list = Arrays.toString(dx_dt);
+        String dx_dt_list = Arrays.stream(dx_dt)
+                .boxed()
+                .map(d -> "" + d)
+                .collect(Collectors.joining(" , "));
         TextInputDialog get_dx_dt = new TextInputDialog(dx_dt_list);
         get_dx_dt.initModality(Modality.WINDOW_MODAL);
         get_dx_dt.initOwner(s);
         TextField inputField = get_dx_dt.getEditor();
+        inputField.setOnKeyTyped(e -> {
+            if (!e.getCharacter().matches("[\\-]?[0-9]?|[.]?|[,]?[\\s]?")) {
+                e.consume();
+            }
+        });
         inputField.setPrefColumnCount(20);
         inputField.setFont(Font.font(null, FontWeight.BOLD, FontPosture.REGULAR, 20));
         inputField.textProperty().addListener(
@@ -335,16 +340,5 @@ public class RiemannSolverAnimation extends Application {
 
     private void setTitle(Stage stage, String title) {
         Platform.runLater(() -> stage.setTitle(title));
-    }
-
-    private void showInfo(MouseEvent e, String infoText) {
-        Tooltip info = new Tooltip();
-        info.setText(infoText);
-        Node node = (Node) e.getSource();
-        info.show(node, e.getScreenX() + 5, e.getScreenY() + 5);
-        new Thread(() -> {
-            LockSupport.parkNanos(1_000_000_000);
-            Platform.runLater(() -> info.hide());
-        }).start();
     }
 }
