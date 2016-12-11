@@ -70,7 +70,7 @@ public class RiemannSolverAnimation extends Application {
         new Thread(() -> {
             while (primaryStage.isShowing()) {
                 LockSupport.parkNanos(1_000_000_000);
-                System.out.println("FPS = " + frc.getFramesPerSecond());
+                System.out.printf("FPS = %.2f\n", frc.getFramesPerSecond());
             }
         }).start();
 

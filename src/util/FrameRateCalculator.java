@@ -6,7 +6,7 @@ import javafx.animation.AnimationTimer;
 public class FrameRateCalculator {
 
     private final static int DEFAULT_SAMPLE_SIZE = 30;
-    private int pointerLocation = 0;
+    private int arrayPointer = 0;
     private long prevTime = 0;
     private final long[] frame_dt_nanos;
 
@@ -30,18 +30,18 @@ public class FrameRateCalculator {
                     prevTime = now;
                     return;
                 }
-                pointerLocation = pointerLocation % frame_dt_nanos.length;
-                frame_dt_nanos[pointerLocation] = now - prevTime;
+                arrayPointer = arrayPointer % frame_dt_nanos.length;
+                frame_dt_nanos[arrayPointer] = now - prevTime;
                 prevTime = now;
-                pointerLocation++;
+                arrayPointer++;
             }
         };
         return animTimer;
     }
 
-    public long getFramesPerSecond() {
+    public double getFramesPerSecond() {
         double avg_dt_nanos = Arrays.stream(frame_dt_nanos).average().orElse(-1);
         double avg_dt_secs = avg_dt_nanos * 1e-9;
-        return Math.round(1.0 / avg_dt_secs);
+        return 1.0 / avg_dt_secs;
     }
 }
